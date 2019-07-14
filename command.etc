@@ -1,0 +1,9 @@
+退出: exit
+关闭防火墙: systemctl stop firewalld
+打开防火墙: systemctl start firewalld
+查看进程: ps aux
+查看内存: free
+跑火车: sl -c
+打开服务器: cd /home/Pinna/SecureTransport/secmng/ && ./keymngserver
+关闭服务器: cd /home/Pinna/SecureTransport/secmng/ && ./killServer.sh
+打开客户端: cd /home/Pinna/SecureTransport/secmng/ && ./keymngclient

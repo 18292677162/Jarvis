@@ -16,9 +16,9 @@
 #include "base/http.h"
 #include "curl/curl.h"
 
-#define SPEECH_FILE "../temp_file/demo.wav"
-#define PLAY_FILE "../temp_file/play.mp3"
-#define CMD_ETC "../command.etc"
+#define SPEECH_FILE "./temp_file/demo.wav"
+#define PLAY_FILE "./temp_file/play.mp3"
+#define CMD_ETC "./command.etc"
 
 using namespace std;
 
@@ -71,7 +71,7 @@ public:
             message = "识别失败...(╥╯^╰╥)";
         }
 
-        std::cout << "语音识别本地文件结果:" << std::endl << result.toStyledString();
+        //std::cout << "语音识别本地文件结果:" << std::endl << result.toStyledString();
     }
 
     /**
@@ -98,6 +98,26 @@ public:
         }
     }
     */
+
+    void TTS(std::string message)
+    {
+        //std::cout << "TTS : " << message << std::endl;
+        std::ofstream ofile;
+        std::string file_ret;
+        std::map<std::string, std::string> options;
+        options["spd"] = "5";
+        options["per"] = "0";
+        ofile.open(PLAY_FILE, std::ios::out | std::ios::binary);
+        //语音合成，将文本转成语音，放到指定目录，形成指定文件
+        Json::Value result = client->text2audio(message, options, file_ret);
+        if(!file_ret.empty()){
+            ofile << file_ret;
+        }
+        else{
+            std::cout << "error: " << result.toStyledString();
+        }
+        ofile.close();
+    }
 
     ~SpeechRec()
     {
@@ -272,14 +292,58 @@ private:
 // Jarvis 业务逻辑
 class Jarvis{
 public:
+    Jarvis()
+    {
+        char buffer[256];
+        ifstream in(CMD_ETC);
+        if(!in.is_open()) {
+            cerr << "open file error" << endl;
+            exit(1);
+        }
+        string sep = ":";
+        while(in.getline(buffer, sizeof(buffer))) {
+            string str = buffer;
+            size_t pos = str.find(sep);
+            if(string::npos == pos) {
+                cerr << "load etc error" << endl;
+                exit(2);
+            }
+            string k = str.substr(0, pos);
+            string v = str.substr(pos + sep.size());
+            k += "。";
+            command_set.insert(make_pair(k, v));
+        }
+        cout << "load command etc ok!" << endl;
+        in.close();
+    }
+
     void Run() {
+        volatile bool quit = false;
         InterRobot robot;
         std::cout << "[ヾ(๑╹◡╹)/]:小娜上线啦! 主人请吩咐..." << std::endl;
-        while(1) { 
+        while(!quit) { 
             message = "";
-            getline(std::cin, message);
+            // 录音识别
+            bool ret = RecordAndASR(message);
             // bool ret = RecordASR(message);
-            robot.Talk(message);
+            if(ret){
+                string cmd;
+                cout << "[我]:" << message << endl;
+                if (MessageIsCommand(message, cmd)) {
+                	if(message == "退出。") {
+	                	TTSAndPlay("好的！下回见咯!");
+						cout << "[ヾ(๑╹◡╹)/]:好的！下回见咯!" << std::endl;
+						quit = true;
+					}
+					else {
+                    	Exec(cmd, true);
+                	}
+                }
+	            else {
+	                string play_message = robot.Talk(message);
+	            	TTSAndPlay(play_message);
+	            }                
+            }
         }     
     }
 
@@ -304,12 +368,35 @@ public:
         return true;
     }
 
-    bool RecordASR(std::string &message) {
+    bool TTSAndPlay(string message)
+    {
+        // cvlc 播放
+        string play = "cvlc --play-and-exit ";
+        play += PLAY_FILE;
+        play += " >/dev/null 2>&1";
+        sr.TTS(message); //语音识别
+        Exec(play, false);  //播放
+        return true;
+    }
+
+    bool MessageIsCommand(std::string _message, std::string &cmd)
+	{
+		std::unordered_map<std::string, std::string>::iterator iter =
+		command_set.find(_message);
+		if(iter != command_set.end()) {
+			cmd = iter->second;
+			return true;
+		}
+		cmd = "";
+		return false;
+	}
+
+    bool RecordAndASR(std::string &message) {
         int err_code = -1;
-        std::string record = "arecord -t wav -c 1 -r 16000 -d 5 -f S16_LE";
+        std::string record = "arecord -t wav -c 1 -r 16000 -d 5 -f S16_LE ";
         record += SPEECH_FILE;
         // 将标准输出写入null
-        record += ">/dev/null 2>$1";
+        record += ">/dev/null 2>&1";
 
         std::cout << "请讲...ヾ(๑╹◡╹)/";
         fflush(stdout);
