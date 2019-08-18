@@ -7,3 +7,7 @@
 打开服务器: cd /home/Pinna/SecureTransport/secmng/ && ./keymngserver
 关闭服务器: cd /home/Pinna/SecureTransport/secmng/ && ./killServer.sh
 打开客户端: cd /home/Pinna/SecureTransport/secmng/ && ./keymngclient
+密钥协商: cd /home/Pinna/SecureTransport/secmng/ && echo -e "1/n" | ./keymngclient 
+密钥校验: cd /home/Pinna/SecureTransport/secmng/ && echo -e "2/n" | ./keymngclient
+密钥注销: cd /home/Pinna/SecureTransport/secmng/ && echo -e "3/n" | ./keymngclient
+密钥查看: cd /home/Pinna/SecureTransport/secmng/ && echo -e "4/n" | ./keymngclient
